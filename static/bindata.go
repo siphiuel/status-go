@@ -87,7 +87,7 @@ func ConfigCliFleetEthBetaJson() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "../config/cli/fleet-eth.beta.json", size: 6425, mode: os.FileMode(420), modTime: time.Unix(1536857798, 0)}
+	info := bindataFileInfo{name: "../config/cli/fleet-eth.beta.json", size: 6425, mode: os.FileMode(420), modTime: time.Unix(1536914913, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -107,7 +107,7 @@ func ConfigCliFleetEthStagingJson() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "../config/cli/fleet-eth.staging.json", size: 1930, mode: os.FileMode(420), modTime: time.Unix(1536857798, 0)}
+	info := bindataFileInfo{name: "../config/cli/fleet-eth.staging.json", size: 1930, mode: os.FileMode(420), modTime: time.Unix(1536914913, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -127,7 +127,7 @@ func ConfigCliFleetEthTestJson() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "../config/cli/fleet-eth.test.json", size: 1731, mode: os.FileMode(420), modTime: time.Unix(1536857799, 0)}
+	info := bindataFileInfo{name: "../config/cli/fleet-eth.test.json", size: 1731, mode: os.FileMode(420), modTime: time.Unix(1536914913, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -147,7 +147,7 @@ func ConfigCliLesEnabledJson() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "../config/cli/les-enabled.json", size: 58, mode: os.FileMode(420), modTime: time.Unix(1536857705, 0)}
+	info := bindataFileInfo{name: "../config/cli/les-enabled.json", size: 58, mode: os.FileMode(420), modTime: time.Unix(1536907098, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -167,7 +167,7 @@ func ConfigStatusChainGenesisJson() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "../config/status-chain-genesis.json", size: 612, mode: os.FileMode(420), modTime: time.Unix(1536857662, 0)}
+	info := bindataFileInfo{name: "../config/status-chain-genesis.json", size: 612, mode: os.FileMode(420), modTime: time.Unix(1536907098, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }

@@ -34,6 +34,16 @@ func (s *SQLLitePersistenceTestSuite) SetupTest() {
 	s.service = p
 }
 
+func (s *SQLLitePersistenceTestSuite) TestMultipleInit() {
+	os.Remove(dbPath)
+
+	_, err := NewSQLLitePersistence(dbPath, key)
+	s.Require().NoError(err)
+
+	_, err = NewSQLLitePersistence(dbPath, key)
+	s.Require().NoError(err)
+}
+
 func (s *SQLLitePersistenceTestSuite) TestPrivateBundle() {
 	installationID := "1"
 

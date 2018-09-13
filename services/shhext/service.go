@@ -50,13 +50,14 @@ type Service struct {
 	debug          bool
 	dataDir        string
 	installationID string
+	pfsEnabled     bool
 }
 
 // Make sure that Service implements node.Service interface.
 var _ node.Service = (*Service)(nil)
 
 // New returns a new Service. dataDir is a folder path to a network-independent location
-func New(w *whisper.Whisper, handler EnvelopeEventsHandler, db *leveldb.DB, dataDir string, installationID string, debug bool) *Service {
+func New(w *whisper.Whisper, handler EnvelopeEventsHandler, db *leveldb.DB, dataDir string, installationID string, debug bool, pfsEnabled bool) *Service {
 	track := &tracker{
 		w:       w,
 		handler: handler,
@@ -69,6 +70,7 @@ func New(w *whisper.Whisper, handler EnvelopeEventsHandler, db *leveldb.DB, data
 		debug:          debug,
 		dataDir:        dataDir,
 		installationID: installationID,
+		pfsEnabled:     pfsEnabled,
 	}
 }
 
@@ -78,14 +80,16 @@ func (s *Service) Protocols() []p2p.Protocol {
 }
 
 func (s *Service) InitProtocol(address string, password string) error {
-	if err := os.MkdirAll(filepath.Clean(s.dataDir), os.ModePerm); err != nil {
-		return err
+	if s.pfsEnabled {
+		if err := os.MkdirAll(filepath.Clean(s.dataDir), os.ModePerm); err != nil {
+			return err
+		}
+		persistence, err := chat.NewSQLLitePersistence(filepath.Join(s.dataDir, fmt.Sprintf("%x.db", address)), password)
+		if err != nil {
+			return err
+		}
+		s.protocol = chat.NewProtocolService(chat.NewEncryptionService(persistence, s.installationID))
 	}
-	persistence, err := chat.NewSQLLitePersistence(filepath.Join(s.dataDir, fmt.Sprintf("%x.db", address)), password)
-	if err != nil {
-		return err
-	}
-	s.protocol = chat.NewProtocolService(chat.NewEncryptionService(persistence, s.installationID))
 	return nil
 }
 

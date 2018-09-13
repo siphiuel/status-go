@@ -61,7 +61,12 @@ func (s *SQLLitePersistence) setup() error {
 		return err
 	}
 
-	return m.Steps(1)
+	err = m.Up()
+	if err == migrate.ErrNoChange {
+		return nil
+	}
+
+	return err
 }
 
 // NewSQLLitePersistence creates a new SQLLitePersistence instance, given a path and a key

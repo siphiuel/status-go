@@ -171,6 +171,7 @@ type NodeConfig struct {
 	DataDir string `validate:"required"`
 	// NoBackupDataDir is the file system folder the node should use for any data storage needs that it doesn't want backed up.
 	NoBackupDataDir string `validate:"required"`
+	PFSEnabled      bool
 
 	// KeyStoreDir is the file system folder that contains private keys.
 	KeyStoreDir string `validate:"required"`

@@ -11,6 +11,7 @@ import (
 type ProtocolService struct {
 	log        log.Logger
 	encryption *EncryptionService
+	Enabled    bool
 }
 
 // NewProtocolService creates a new ProtocolService instance

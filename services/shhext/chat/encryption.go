@@ -139,10 +139,6 @@ func (s *EncryptionService) ProcessPublicBundle(myIdentityKey *ecdsa.PrivateKey,
 		return err
 	}
 	return s.persistence.AddPublicBundle(b)
-
-	// If it's our bundle but different device id merge the bundles
-	//crypto.FromECDSAPub(recoveredKey)
-
 }
 
 // DecryptPayload decrypts the payload of a DirectMessageProtocol, given an identity private key and the sender's public key
@@ -410,7 +406,7 @@ func (s *EncryptionService) EncryptPayload(theirIdentityKey *ecdsa.PublicKey, my
 
 	for installationID, signedPreKeyContainer := range theirBundle.GetSignedPreKeys() {
 		if s.installationID != installationID {
-			signedPreKey := signedPreKeyContainer.GetSignedPreKey()
+			theirSignedPreKey := signedPreKeyContainer.GetSignedPreKey()
 			// See if a session is there already
 			drInfo, err := s.persistence.GetAnyRatchetInfo(theirIdentityKeyC, installationID)
 			if err != nil {
@@ -448,21 +444,21 @@ func (s *EncryptionService) EncryptPayload(theirIdentityKey *ecdsa.PublicKey, my
 			}
 
 			if theirBundle != nil {
-				sharedKey, ourEphemeralKey, err := s.keyFromActiveX3DH(theirIdentityKeyC, signedPreKey, myIdentityKey)
+				sharedKey, ourEphemeralKey, err := s.keyFromActiveX3DH(theirIdentityKeyC, theirSignedPreKey, myIdentityKey)
 				if err != nil {
 					return nil, err
 				}
 				theirIdentityKeyC := ecrypto.CompressPubkey(theirIdentityKey)
 				ourEphemeralKeyC := ecrypto.CompressPubkey(ourEphemeralKey)
 
-				err = s.persistence.AddRatchetInfo(sharedKey, theirIdentityKeyC, signedPreKey, ourEphemeralKeyC, installationID)
+				err = s.persistence.AddRatchetInfo(sharedKey, theirIdentityKeyC, theirSignedPreKey, ourEphemeralKeyC, installationID)
 				if err != nil {
 					return nil, err
 				}
 
 				x3dhHeader := &X3DHHeader{
 					Key:            ourEphemeralKeyC,
-					Id:             signedPreKey,
+					Id:             theirSignedPreKey,
 					InstallationId: s.installationID,
 				}
 

@@ -63,6 +63,7 @@ func TestValidateNodeConfig(t *testing.T) {
 			Name: "response for config missing DataDir",
 			Config: `{
 				"NetworkId": 3,
+				"NoBackupDataDir": "/tmp",
 				"KeyStoreDir": "/tmp",
 				"NoDiscovery": true,
 				"WhisperConfig": {
@@ -151,14 +152,15 @@ func TestValidateNodeConfig(t *testing.T) {
 			Config: `{}`,
 			Callback: func(resp APIDetailedResponse) {
 				required := map[string]string{
-					"NodeConfig.NetworkID":   "required",
-					"NodeConfig.DataDir":     "required",
-					"NodeConfig.KeyStoreDir": "required",
+					"NodeConfig.NetworkID":       "required",
+					"NodeConfig.DataDir":         "required",
+					"NodeConfig.NoBackupDataDir": "required",
+					"NodeConfig.KeyStoreDir":     "required",
 				}
 
 				require.False(t, resp.Status)
 				require.Contains(t, resp.Message, "validation: validation failed")
-				require.Equal(t, 3, len(resp.FieldErrors), resp.FieldErrors)
+				require.Equal(t, 4, len(resp.FieldErrors), resp.FieldErrors)
 
 				for _, err := range resp.FieldErrors {
 					require.Contains(t, required, err.Parameter)

@@ -446,7 +446,7 @@ func appendIf(condition bool, services []gethnode.ServiceConstructor, service ge
 
 func (b *StatusBackend) CreateContactCode() (string, error) {
 	selectedAccount, err := b.AccountManager().SelectedAccount()
-	if selectedAccount == nil || err == account.ErrNoAccountSelected {
+	if err != nil {
 		return "", err
 	}
 
