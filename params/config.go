@@ -479,6 +479,10 @@ func (c *NodeConfig) Validate() error {
 		return fmt.Errorf("NoDiscovery is false, but ClusterConfig.BootNodes is empty")
 	}
 
+	if c.PFSEnabled && len(c.InstallationID) == 0 {
+		return fmt.Errorf("PFSEnabled is true, but InstallationID is empty")
+	}
+
 	if len(c.ClusterConfig.RendezvousNodes) == 0 {
 		if c.Rendezvous {
 			return fmt.Errorf("Rendezvous is enabled, but ClusterConfig.RendezvousNodes is empty")

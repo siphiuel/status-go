@@ -596,6 +596,22 @@ func TestNodeConfigValidate(t *testing.T) {
 			}`,
 			Error: "WhisperConfig.MailServerAsymKey is invalid",
 		},
+		{
+			Name: "Validate that PFSEnabled & InstallationID are checked for validity",
+			Config: `{
+				"NetworkId": 1,
+				"DataDir": "/some/dir",
+				"PFSEnabled": true,
+				"NoBackupDataDir": "/some/dir",
+				"KeyStoreDir": "/some/dir",
+				"NoDiscovery": true,
+				"WhisperConfig": {
+					"Enabled": true,
+					"DataDir": "/foo"
+				}
+			}`,
+			Error: "PFSEnabled is true, but InstallationID is empty",
+		},
 	}
 
 	for _, tc := range testCases {
