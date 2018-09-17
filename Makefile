@@ -188,9 +188,6 @@ endif
 	docker push $(BOOTNODE_IMAGE_NAME):latest
 	docker push $(DOCKER_IMAGE_NAME):latest
 
-protoc-install:
-	apt install -y protobuf-compiler
-
 xgo-docker-images: ##@docker Build xgo docker images
 	@echo "Building xgo docker images..."
 	docker build _assets/build/xgo/base -t $(XGOIMAGE)

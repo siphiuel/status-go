@@ -33,6 +33,9 @@ var (
 	// ErrInvalidPublicKey is returned when public key can't be extracted
 	// from MailServer's nodeID.
 	ErrInvalidPublicKey = errors.New("can't extract public key")
+	// ErrPFSNotEnabled is returned when an endpoint PFS only is called but
+	// PFS is disabled
+	ErrPFSNotEnabled = errors.New("pfs not enabled")
 )
 
 // -----
@@ -276,9 +279,8 @@ func (api *PublicAPI) SendPublicMessage(ctx context.Context, msg chat.SendPublic
 
 // SendDirectMessage sends a 1:1 chat message to the underlying transport
 func (api *PublicAPI) SendDirectMessage(ctx context.Context, msg chat.SendDirectMessageRPC) ([]hexutil.Bytes, error) {
-
 	if !api.service.pfsEnabled {
-		return nil, errors.New("PFS not enabled")
+		return nil, ErrPFSNotEnabled
 	}
 	// To be completely agnostic from whisper we should not be using whisper to store the key
 	privateKey, err := api.service.w.GetPrivateKey(msg.Sig)
@@ -314,14 +316,13 @@ func (api *PublicAPI) SendDirectMessage(ctx context.Context, msg chat.SendDirect
 		response = append(response, hash)
 
 	}
-	api.log.Info("response", "response", response)
 	return response, nil
 }
 
 // SendGroupMessage sends a group messag chat message to the underlying transport
 func (api *PublicAPI) SendGroupMessage(ctx context.Context, msg chat.SendGroupMessageRPC) ([]hexutil.Bytes, error) {
 	if !api.service.pfsEnabled {
-		return nil, errors.New("PFS not enabled")
+		return nil, ErrPFSNotEnabled
 	}
 
 	// To be completely agnostic from whisper we should not be using whisper to store the key

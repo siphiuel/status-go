@@ -17,7 +17,7 @@ import (
 
 // EncryptionService defines a service that is responsible for the encryption aspect of the protocol
 
-var ErrSessionNotFound = errors.New("Session not found")
+var ErrSessionNotFound = errors.New("session not found")
 
 type EncryptionService struct {
 	log            log.Logger

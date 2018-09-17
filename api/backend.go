@@ -467,7 +467,7 @@ func (b *StatusBackend) CreateContactCode() (string, error) {
 
 func (b *StatusBackend) ProcessContactCode(contactCode string) error {
 	selectedAccount, err := b.AccountManager().SelectedAccount()
-	if selectedAccount == nil || err == account.ErrNoAccountSelected {
+	if err != nil {
 		return err
 	}
 
