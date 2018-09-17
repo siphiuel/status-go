@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"errors"
+	"fmt"
 	ecrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/log"
@@ -386,6 +387,9 @@ func (s *EncryptionService) EncryptPayload(theirIdentityKey *ecdsa.PublicKey, my
 	response := make(map[string]*DirectMessageProtocol)
 	theirIdentityKeyC := ecrypto.CompressPubkey(theirIdentityKey)
 
+	keyString := fmt.Sprintf("0x%x", ecrypto.FromECDSAPub(theirIdentityKey))
+	s.log.Info("Sending to", "ky", keyString)
+
 	// Get their latest bundle
 	theirBundle, err := s.persistence.GetPublicBundle(theirIdentityKey)
 	if err != nil {
@@ -394,6 +398,7 @@ func (s *EncryptionService) EncryptPayload(theirIdentityKey *ecdsa.PublicKey, my
 
 	// We don't have any, send a message with DH
 	if theirBundle == nil && !bytes.Equal(theirIdentityKeyC, ecrypto.CompressPubkey(&myIdentityKey.PublicKey)) {
+		s.log.Info("Bundle not found")
 		dmp, err := s.encryptWithDH(theirIdentityKey, payload)
 		if err != nil {
 			return nil, err
@@ -405,7 +410,9 @@ func (s *EncryptionService) EncryptPayload(theirIdentityKey *ecdsa.PublicKey, my
 	}
 
 	for installationID, signedPreKeyContainer := range theirBundle.GetSignedPreKeys() {
+		s.log.Info("Processing installation ID", "installation", installationID)
 		if s.installationID != installationID {
+			s.log.Info("not us", "installation", s.installationID)
 			theirSignedPreKey := signedPreKeyContainer.GetSignedPreKey()
 			// See if a session is there already
 			drInfo, err := s.persistence.GetAnyRatchetInfo(theirIdentityKeyC, installationID)

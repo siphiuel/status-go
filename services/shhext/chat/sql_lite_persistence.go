@@ -7,6 +7,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 
+	"fmt"
+	"github.com/ethereum/go-ethereum/log"
 	_ "github.com/mutecomm/go-sqlcipher" // We require go sqlcipher that overrides default implementation
 	dr "github.com/status-im/doubleratchet"
 	"github.com/status-im/migrate"
@@ -98,13 +100,13 @@ func (s *SQLLitePersistence) Open(path string, key string) error {
 		return err
 	}
 
-	if _, err = db.Exec("PRAGMA key=ON"); err != nil {
-		return err
-	}
+	//if _, err = db.Exec("PRAGMA key=ON"); err != nil {
+	//		return err
+	//	}
 
-	if _, err = db.Exec("PRAGMA cypher_page_size=4096"); err != nil {
-		return err
-	}
+	//	if _, err = db.Exec("PRAGMA cypher_page_size=4096"); err != nil {
+	//		return err
+	//	}
 
 	s.db = db
 
@@ -154,7 +156,17 @@ func (s *SQLLitePersistence) AddPublicBundle(b *Bundle) error {
 		return err
 	}
 
+	identityKey, err := crypto.DecompressPubkey(b.GetIdentity())
+	if err != nil {
+		return err
+	}
+
 	for installationID, signedPreKeyContainer := range b.GetSignedPreKeys() {
+		log.New("package", "status-go/services/persistien").Info("Adding public bundle", "installationID", installationID)
+		keyString := fmt.Sprintf("0x%x", crypto.FromECDSAPub(identityKey))
+
+		log.New("package", "status-go/services/persistien").Info("Sending to", "ky", keyString)
+
 		signedPreKey := signedPreKeyContainer.GetSignedPreKey()
 		insertStmt, err := tx.Prepare("INSERT INTO bundles(identity, signed_pre_key, installation_id, timestamp) VALUES( ?, ?, ?, ?)")
 		if err != nil {

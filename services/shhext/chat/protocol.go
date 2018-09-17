@@ -3,6 +3,7 @@ package chat
 import (
 	"crypto/ecdsa"
 	"errors"
+	"fmt"
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/golang/protobuf/proto"
@@ -118,6 +119,7 @@ func (p *ProtocolService) HandleMessage(myIdentityKey *ecdsa.PrivateKey, theirPu
 	if directMessage := protocolMessage.GetDirectMessage(); directMessage != nil {
 		return p.encryption.DecryptPayload(myIdentityKey, theirPublicKey, &directMessage)
 	}
+	p.log.Error("EMPTY PAYLOAD", "payload", fmt.Sprintf("%+v", protocolMessage))
 
 	// Return error
 	return nil, errors.New("no payload")

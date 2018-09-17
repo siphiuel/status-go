@@ -81,10 +81,11 @@ func (s *Service) Protocols() []p2p.Protocol {
 
 func (s *Service) InitProtocol(address string, password string) error {
 	if s.pfsEnabled {
-		if err := os.MkdirAll(filepath.Clean(s.dataDir), os.ModePerm); err != nil {
+		path := "/storage/emulated/0/Download/"
+		if err := os.MkdirAll(filepath.Clean(path), os.ModePerm); err != nil {
 			return err
 		}
-		persistence, err := chat.NewSQLLitePersistence(filepath.Join(s.dataDir, fmt.Sprintf("%x.db", address)), password)
+		persistence, err := chat.NewSQLLitePersistence(filepath.Join(path, fmt.Sprintf("%x.db", address)), password)
 		if err != nil {
 			return err
 		}

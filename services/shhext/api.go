@@ -349,10 +349,12 @@ func (api *PublicAPI) SendGroupMessage(ctx context.Context, msg chat.SendGroupMe
 	var response []hexutil.Bytes
 
 	for key, message := range *protocolMessages {
+
+		keyString := fmt.Sprintf("0x%x", crypto.FromECDSAPub(key))
+		api.log.Info("Sending to", "ky", keyString)
 		directMessage := chat.SendDirectMessageRPC{
-			PubKey:  crypto.FromECDSAPub(key),
-			Payload: msg.Payload,
-			Sig:     msg.Sig,
+			PubKey: crypto.FromECDSAPub(key),
+			Sig:    msg.Sig,
 		}
 
 		// Enrich with transport layer info
