@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"errors"
+
 	ecrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/log"
@@ -223,17 +224,38 @@ func (s *EncryptionService) DecryptPayload(myIdentityKey *ecdsa.PrivateKey, thei
 	return nil, errors.New("no key specified")
 }
 
+func (s *EncryptionService) createNewSession(drInfo *RatchetInfo, sk [32]byte, keyPair crypto.DHPair) (dr.Session, error) {
+	var err error
+	var session dr.Session
+
+	if drInfo.PrivateKey != nil {
+		session, err = dr.New(
+			drInfo.ID,
+			sk,
+			keyPair,
+			s.persistence.GetSessionStorage(),
+			dr.WithKeysStorage(s.persistence.GetKeysStorage()),
+			dr.WithCrypto(crypto.EthereumCrypto{}))
+	} else {
+		session, err = dr.NewWithRemoteKey(
+			drInfo.ID,
+			sk,
+			keyPair.PubKey,
+			s.persistence.GetSessionStorage(),
+			dr.WithKeysStorage(s.persistence.GetKeysStorage()),
+			dr.WithCrypto(crypto.EthereumCrypto{}))
+	}
+
+	return session, err
+}
+
 func (s *EncryptionService) encryptUsingDR(theirIdentityKey *ecdsa.PublicKey, drInfo *RatchetInfo, payload []byte) ([]byte, *DRHeader, error) {
 	var err error
 
 	var session dr.Session
-	var sk [32]byte
+	var sk, publicKey, privateKey [32]byte
 	copy(sk[:], drInfo.Sk)
-
-	var publicKey [32]byte
 	copy(publicKey[:], drInfo.PublicKey[:32])
-
-	var privateKey [32]byte
 	copy(privateKey[:], drInfo.PrivateKey[:])
 
 	keyPair := crypto.DHPair{
@@ -255,28 +277,10 @@ func (s *EncryptionService) encryptUsingDR(theirIdentityKey *ecdsa.PublicKey, dr
 
 	// Create a new one
 	if session == nil {
-
-		if drInfo.PrivateKey != nil {
-			session, err = dr.New(
-				drInfo.ID,
-				sk,
-				keyPair,
-				sessionStorage,
-				dr.WithKeysStorage(s.persistence.GetKeysStorage()),
-				dr.WithCrypto(crypto.EthereumCrypto{}))
-		} else {
-			session, err = dr.NewWithRemoteKey(
-				drInfo.ID,
-				sk,
-				publicKey,
-				sessionStorage,
-				dr.WithKeysStorage(s.persistence.GetKeysStorage()),
-				dr.WithCrypto(crypto.EthereumCrypto{}))
+		session, err = s.createNewSession(drInfo, sk, keyPair)
+		if err != nil {
+			return nil, nil, err
 		}
-	}
-
-	if err != nil {
-		return nil, nil, err
 	}
 
 	response, err := session.RatchetEncrypt(payload, nil)
@@ -298,13 +302,9 @@ func (s *EncryptionService) decryptUsingDR(theirIdentityKey *ecdsa.PublicKey, dr
 	var err error
 
 	var session dr.Session
-	var sk [32]byte
+	var sk, publicKey, privateKey [32]byte
 	copy(sk[:], drInfo.Sk)
-
-	var publicKey [32]byte
 	copy(publicKey[:], drInfo.PublicKey[:32])
-
-	var privateKey [32]byte
 	copy(privateKey[:], drInfo.PrivateKey[:])
 
 	keyPair := crypto.DHPair{
@@ -319,37 +319,18 @@ func (s *EncryptionService) decryptUsingDR(theirIdentityKey *ecdsa.PublicKey, dr
 		dr.WithKeysStorage(s.persistence.GetKeysStorage()),
 		dr.WithCrypto(crypto.EthereumCrypto{}),
 	)
-
 	if err != nil {
 		return nil, err
 	}
 
 	if session == nil {
-		if drInfo.PrivateKey != nil {
-			session, err = dr.New(
-				drInfo.ID,
-				sk,
-				keyPair,
-				sessionStorage,
-				dr.WithKeysStorage(s.persistence.GetKeysStorage()),
-				dr.WithCrypto(crypto.EthereumCrypto{}))
-		} else {
-			session, err = dr.NewWithRemoteKey(
-				drInfo.ID,
-				sk,
-				publicKey,
-				sessionStorage,
-				dr.WithKeysStorage(s.persistence.GetKeysStorage()),
-				dr.WithCrypto(crypto.EthereumCrypto{}))
+		session, err = s.createNewSession(drInfo, sk, keyPair)
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	if err != nil {
-		return nil, err
-	}
-
 	plaintext, err := session.RatchetDecrypt(*payload, nil)
-
 	if err != nil {
 		return nil, err
 	}
@@ -401,13 +382,69 @@ func (s *EncryptionService) EncryptPayload(theirIdentityKey *ecdsa.PublicKey, my
 
 		response["none"] = dmp
 		return &response, nil
-
 	}
 
 	for installationID, signedPreKeyContainer := range theirBundle.GetSignedPreKeys() {
-		if s.installationID != installationID {
-			theirSignedPreKey := signedPreKeyContainer.GetSignedPreKey()
-			// See if a session is there already
+		if s.installationID == installationID {
+			continue
+		}
+
+		theirSignedPreKey := signedPreKeyContainer.GetSignedPreKey()
+		// See if a session is there already
+		drInfo, err := s.persistence.GetAnyRatchetInfo(theirIdentityKeyC, installationID)
+		if err != nil {
+			return nil, err
+		}
+
+		if drInfo != nil {
+			encryptedPayload, drHeader, err := s.encryptUsingDR(theirIdentityKey, drInfo, payload)
+			if err != nil {
+				return nil, err
+			}
+
+			dmp := DirectMessageProtocol{
+				Payload:  encryptedPayload,
+				DRHeader: drHeader,
+			}
+
+			if drInfo.EphemeralKey != nil {
+				dmp.X3DHHeader = &X3DHHeader{
+					Key:            drInfo.EphemeralKey,
+					Id:             drInfo.BundleID,
+					InstallationId: s.installationID,
+				}
+			}
+
+			response[drInfo.InstallationID] = &dmp
+
+			return &response, nil
+		}
+
+		// check if a bundle is there
+		theirBundle, err := s.persistence.GetPublicBundle(theirIdentityKey)
+		if err != nil {
+			return nil, err
+		}
+
+		if theirBundle != nil {
+			sharedKey, ourEphemeralKey, err := s.keyFromActiveX3DH(theirIdentityKeyC, theirSignedPreKey, myIdentityKey)
+			if err != nil {
+				return nil, err
+			}
+			theirIdentityKeyC := ecrypto.CompressPubkey(theirIdentityKey)
+			ourEphemeralKeyC := ecrypto.CompressPubkey(ourEphemeralKey)
+
+			err = s.persistence.AddRatchetInfo(sharedKey, theirIdentityKeyC, theirSignedPreKey, ourEphemeralKeyC, installationID)
+			if err != nil {
+				return nil, err
+			}
+
+			x3dhHeader := &X3DHHeader{
+				Key:            ourEphemeralKeyC,
+				Id:             theirSignedPreKey,
+				InstallationId: s.installationID,
+			}
+
 			drInfo, err := s.persistence.GetAnyRatchetInfo(theirIdentityKeyC, installationID)
 			if err != nil {
 				return nil, err
@@ -419,73 +456,16 @@ func (s *EncryptionService) EncryptPayload(theirIdentityKey *ecdsa.PublicKey, my
 					return nil, err
 				}
 
-				dmp := DirectMessageProtocol{
-					Payload:  encryptedPayload,
-					DRHeader: drHeader,
+				dmp := &DirectMessageProtocol{
+					Payload:    encryptedPayload,
+					X3DHHeader: x3dhHeader,
+					DRHeader:   drHeader,
 				}
 
-				if drInfo.EphemeralKey != nil {
-					dmp.X3DHHeader = &X3DHHeader{
-						Key:            drInfo.EphemeralKey,
-						Id:             drInfo.BundleID,
-						InstallationId: s.installationID,
-					}
-				}
-
-				response[drInfo.InstallationID] = &dmp
-
-				return &response, nil
+				response[drInfo.InstallationID] = dmp
 			}
-
-			// check if a bundle is there
-			theirBundle, err := s.persistence.GetPublicBundle(theirIdentityKey)
-			if err != nil {
-				return nil, err
-			}
-
-			if theirBundle != nil {
-				sharedKey, ourEphemeralKey, err := s.keyFromActiveX3DH(theirIdentityKeyC, theirSignedPreKey, myIdentityKey)
-				if err != nil {
-					return nil, err
-				}
-				theirIdentityKeyC := ecrypto.CompressPubkey(theirIdentityKey)
-				ourEphemeralKeyC := ecrypto.CompressPubkey(ourEphemeralKey)
-
-				err = s.persistence.AddRatchetInfo(sharedKey, theirIdentityKeyC, theirSignedPreKey, ourEphemeralKeyC, installationID)
-				if err != nil {
-					return nil, err
-				}
-
-				x3dhHeader := &X3DHHeader{
-					Key:            ourEphemeralKeyC,
-					Id:             theirSignedPreKey,
-					InstallationId: s.installationID,
-				}
-
-				drInfo, err := s.persistence.GetAnyRatchetInfo(theirIdentityKeyC, installationID)
-				if err != nil {
-					return nil, err
-				}
-
-				if drInfo != nil {
-					encryptedPayload, drHeader, err := s.encryptUsingDR(theirIdentityKey, drInfo, payload)
-					if err != nil {
-						return nil, err
-					}
-
-					dmp := &DirectMessageProtocol{
-						Payload:    encryptedPayload,
-						X3DHHeader: x3dhHeader,
-						DRHeader:   drHeader,
-					}
-
-					response[drInfo.InstallationID] = dmp
-
-				}
-			}
-
 		}
 	}
-	return &response, nil
 
+	return &response, nil
 }
