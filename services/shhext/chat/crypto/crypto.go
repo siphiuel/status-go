@@ -12,7 +12,6 @@ const (
 )
 
 func EncryptSymmetric(key []byte, plaintext []byte) ([]byte, error) {
-
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err

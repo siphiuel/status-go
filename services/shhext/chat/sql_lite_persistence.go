@@ -56,17 +56,15 @@ func (s *SQLLitePersistence) setup() error {
 		source,
 		"sqlcipher",
 		driver)
-
 	if err != nil {
 		return err
 	}
 
-	err = m.Up()
-	if err == migrate.ErrNoChange {
-		return nil
+	if err = m.Up(); err != migrate.ErrNoChange {
+		return err
 	}
 
-	return err
+	return nil
 }
 
 // NewSQLLitePersistence creates a new SQLLitePersistence instance, given a path and a key

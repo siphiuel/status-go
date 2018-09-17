@@ -20,7 +20,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
-var ErrProtocolNotInitialized = errors.New("procotol is not initialized")
+var errProtocolNotInitialized = errors.New("procotol is not initialized")
 
 // EnvelopeState in local tracker
 type EnvelopeState int
@@ -90,22 +90,25 @@ func (s *Service) Protocols() []p2p.Protocol {
 
 // InitProtocol create an instance of ProtocolService given an address and password
 func (s *Service) InitProtocol(address string, password string) error {
-	if s.pfsEnabled {
-		if err := os.MkdirAll(filepath.Clean(s.dataDir), os.ModePerm); err != nil {
-			return err
-		}
-		persistence, err := chat.NewSQLLitePersistence(filepath.Join(s.dataDir, fmt.Sprintf("%x.db", address)), password)
-		if err != nil {
-			return err
-		}
-		s.protocol = chat.NewProtocolService(chat.NewEncryptionService(persistence, s.installationID))
+	if !s.pfsEnabled {
+		return nil
 	}
+
+	if err := os.MkdirAll(filepath.Clean(s.dataDir), os.ModePerm); err != nil {
+		return err
+	}
+	persistence, err := chat.NewSQLLitePersistence(filepath.Join(s.dataDir, fmt.Sprintf("%x.db", address)), password)
+	if err != nil {
+		return err
+	}
+	s.protocol = chat.NewProtocolService(chat.NewEncryptionService(persistence, s.installationID))
+
 	return nil
 }
 
 func (s *Service) ProcessPublicBundle(myIdentityKey *ecdsa.PrivateKey, bundle *chat.Bundle) error {
 	if s.protocol == nil {
-		return ErrProtocolNotInitialized
+		return errProtocolNotInitialized
 	}
 
 	return s.protocol.ProcessPublicBundle(myIdentityKey, bundle)
@@ -113,7 +116,7 @@ func (s *Service) ProcessPublicBundle(myIdentityKey *ecdsa.PrivateKey, bundle *c
 
 func (s *Service) GetBundle(myIdentityKey *ecdsa.PrivateKey) (*chat.Bundle, error) {
 	if s.protocol == nil {
-		return nil, ErrProtocolNotInitialized
+		return nil, errProtocolNotInitialized
 	}
 
 	return s.protocol.GetBundle(myIdentityKey)
