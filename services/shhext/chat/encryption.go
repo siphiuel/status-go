@@ -16,10 +16,9 @@ import (
 	"github.com/status-im/status-go/services/shhext/chat/crypto"
 )
 
+var errSessionNotFound = errors.New("session not found")
+
 // EncryptionService defines a service that is responsible for the encryption aspect of the protocol
-
-var ErrSessionNotFound = errors.New("session not found")
-
 type EncryptionService struct {
 	log            log.Logger
 	persistence    PersistenceServiceInterface
@@ -50,7 +49,6 @@ func (s *EncryptionService) keyFromActiveX3DH(theirIdentityKey []byte, theirSign
 
 // CreateBundle retrieves or creates an X3DH bundle given a private key
 func (s *EncryptionService) CreateBundle(privateKey *ecdsa.PrivateKey) (*Bundle, error) {
-
 	ourIdentityKeyC := ecrypto.CompressPubkey(&privateKey.PublicKey)
 	bundleContainer, err := s.persistence.GetAnyPrivateBundle(ourIdentityKeyC)
 	if err != nil {
@@ -109,7 +107,7 @@ func (s *EncryptionService) keyFromPassiveX3DH(myIdentityKey *ecdsa.PrivateKey, 
 	}
 
 	if bundlePrivateKey == nil {
-		return nil, ErrSessionNotFound
+		return nil, errSessionNotFound
 	}
 
 	signedPreKey, err := ecrypto.ToECDSA(bundlePrivateKey)
@@ -133,7 +131,6 @@ func (s *EncryptionService) keyFromPassiveX3DH(myIdentityKey *ecdsa.PrivateKey, 
 
 // ProcessPublicBundle persists a bundle
 func (s *EncryptionService) ProcessPublicBundle(myIdentityKey *ecdsa.PrivateKey, b *Bundle) error {
-
 	// Make sure the bundle belongs to who signed it
 	err := VerifyBundle(b)
 	if err != nil {
@@ -153,7 +150,7 @@ func (s *EncryptionService) DecryptPayload(myIdentityKey *ecdsa.PrivateKey, thei
 	}
 
 	if msg == nil {
-		return nil, ErrSessionNotFound
+		return nil, errSessionNotFound
 	}
 	payload := msg.GetPayload()
 
@@ -206,7 +203,7 @@ func (s *EncryptionService) DecryptPayload(myIdentityKey *ecdsa.PrivateKey, thei
 
 		if drInfo == nil {
 			s.log.Error("Could not find a session")
-			return nil, ErrSessionNotFound
+			return nil, errSessionNotFound
 		}
 
 		return s.decryptUsingDR(theirIdentityKey, drInfo, drMessage)
