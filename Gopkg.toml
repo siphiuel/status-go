@@ -102,7 +102,7 @@ ignored = [ "github.com/ethereum/go-ethereum/ethapi" ]
 
 [[override]]
   name = "github.com/rjeczalik/notify"
-  revision = "9d5aa0c3b735c3340018a4627446c3ea5a04a097"
+  revision = "0f065fa99b48b842c3fd3e2c8b194c6f2b69f6b8"
 
 [[override]]
   name = "github.com/robertkrimen/otto"
