@@ -11,7 +11,7 @@ const (
 	aesNonceLength = 12
 )
 
-func EncryptSymmetric(key []byte, plaintext []byte) ([]byte, error) {
+func EncryptSymmetric(key, plaintext []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
@@ -72,7 +72,7 @@ func validateDataIntegrity(k []byte, expectedSize int) bool {
 	if len(k) != expectedSize {
 		return false
 	}
-	if expectedSize > 3 && containsOnlyZeros(k) {
+	if containsOnlyZeros(k) {
 		return false
 	}
 	return true
@@ -84,8 +84,11 @@ func generateSecureRandomData(length int) ([]byte, error) {
 	_, err := rand.Read(res)
 	if err != nil {
 		return nil, err
-	} else if !validateDataIntegrity(res, length) {
+	}
+
+	if !validateDataIntegrity(res, length) {
 		return nil, errors.New("crypto/rand failed to generate secure random data")
 	}
+
 	return res, nil
 }

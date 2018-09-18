@@ -308,7 +308,7 @@ func activateShhService(stack *node.Node, config *params.NodeConfig, db *leveldb
 		}
 
 		config := &shhext.ServiceConfig{
-			DataDir:        config.NoBackupDataDir,
+			DataDir:        config.BackupDisabledDataDir,
 			InstallationID: config.InstallationID,
 			Debug:          config.DebugAPIEnabled,
 			PFSEnabled:     config.PFSEnabled,

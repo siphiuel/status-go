@@ -16,25 +16,25 @@ import (
 	"github.com/status-im/status-go/services/shhext/chat/crypto"
 )
 
-var errSessionNotFound = errors.New("session not found")
+var ErrSessionNotFound = errors.New("session not found")
 
 // EncryptionService defines a service that is responsible for the encryption aspect of the protocol
 type EncryptionService struct {
 	log            log.Logger
-	persistence    PersistenceServiceInterface
+	persistence    PersistenceService
 	installationID string
-	mutex          *sync.Mutex
+	mutex          sync.Mutex
 }
 
 // NewEncryptionService creates a new EncryptionService instance
-func NewEncryptionService(p PersistenceServiceInterface, installationID string) *EncryptionService {
+func NewEncryptionService(p PersistenceService, installationID string) *EncryptionService {
 	logger := log.New("package", "status-go/services/sshext.chat")
 	logger.Info("Initialized encryption service", "installationID", installationID)
 	return &EncryptionService{
 		log:            logger,
 		persistence:    p,
 		installationID: installationID,
-		mutex:          &sync.Mutex{},
+		mutex:          sync.Mutex{},
 	}
 }
 
@@ -107,7 +107,7 @@ func (s *EncryptionService) keyFromPassiveX3DH(myIdentityKey *ecdsa.PrivateKey, 
 	}
 
 	if bundlePrivateKey == nil {
-		return nil, errSessionNotFound
+		return nil, ErrSessionNotFound
 	}
 
 	signedPreKey, err := ecrypto.ToECDSA(bundlePrivateKey)
@@ -140,17 +140,17 @@ func (s *EncryptionService) ProcessPublicBundle(myIdentityKey *ecdsa.PrivateKey,
 }
 
 // DecryptPayload decrypts the payload of a DirectMessageProtocol, given an identity private key and the sender's public key
-func (s *EncryptionService) DecryptPayload(myIdentityKey *ecdsa.PrivateKey, theirIdentityKey *ecdsa.PublicKey, msgs *map[string]*DirectMessageProtocol) ([]byte, error) {
+func (s *EncryptionService) DecryptPayload(myIdentityKey *ecdsa.PrivateKey, theirIdentityKey *ecdsa.PublicKey, msgs map[string]*DirectMessageProtocol) ([]byte, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	msg := (*msgs)[s.installationID]
+	msg := msgs[s.installationID]
 	if msg == nil {
-		msg = (*msgs)["none"]
+		msg = msgs["none"]
 	}
 
 	if msg == nil {
-		return nil, errSessionNotFound
+		return nil, ErrSessionNotFound
 	}
 	payload := msg.GetPayload()
 
@@ -203,7 +203,7 @@ func (s *EncryptionService) DecryptPayload(myIdentityKey *ecdsa.PrivateKey, thei
 
 		if drInfo == nil {
 			s.log.Error("Could not find a session")
-			return nil, errSessionNotFound
+			return nil, ErrSessionNotFound
 		}
 
 		return s.decryptUsingDR(theirIdentityKey, drInfo, drMessage)
@@ -357,7 +357,7 @@ func (s *EncryptionService) encryptWithDH(theirIdentityKey *ecdsa.PublicKey, pay
 // EncryptPayload returns a new DirectMessageProtocol with a given payload encrypted, given a recipient's public key and the sender private identity key
 // TODO: refactor this
 // nolint: gocyclo
-func (s *EncryptionService) EncryptPayload(theirIdentityKey *ecdsa.PublicKey, myIdentityKey *ecdsa.PrivateKey, payload []byte) (*map[string]*DirectMessageProtocol, error) {
+func (s *EncryptionService) EncryptPayload(theirIdentityKey *ecdsa.PublicKey, myIdentityKey *ecdsa.PrivateKey, payload []byte) (map[string]*DirectMessageProtocol, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -378,7 +378,7 @@ func (s *EncryptionService) EncryptPayload(theirIdentityKey *ecdsa.PublicKey, my
 		}
 
 		response["none"] = dmp
-		return &response, nil
+		return response, nil
 	}
 
 	for installationID, signedPreKeyContainer := range theirBundle.GetSignedPreKeys() {
@@ -414,7 +414,7 @@ func (s *EncryptionService) EncryptPayload(theirIdentityKey *ecdsa.PublicKey, my
 
 			response[drInfo.InstallationID] = &dmp
 
-			return &response, nil
+			return response, nil
 		}
 
 		// check if a bundle is there
@@ -464,5 +464,5 @@ func (s *EncryptionService) EncryptPayload(theirIdentityKey *ecdsa.PublicKey, my
 		}
 	}
 
-	return &response, nil
+	return response, nil
 }

@@ -197,48 +197,10 @@ func (api *PublicAPI) GetNewFilterMessages(filterID string) ([]*whisper.Message,
 	if api.service.pfsEnabled {
 		// Attempt to decrypt message, otherwise leave unchanged
 		for _, msg := range dedupMessages {
-			var privateKey *ecdsa.PrivateKey
-			var publicKey *ecdsa.PublicKey
 
-			// Msg.Dst is empty is a public message, nothing to do
-			if msg.Dst != nil {
-				// There's probably a better way to do this
-				keyBytes, err := hexutil.Bytes(msg.Dst).MarshalText()
-				if err != nil {
-					return nil, err
-				}
-
-				privateKey, err = api.service.w.GetPrivateKey(string(keyBytes))
-				if err != nil {
-					return nil, err
-				}
-
-				// This needs to be pushed down in the protocol message
-				publicKey, err = crypto.UnmarshalPubkey(msg.Sig)
-				if err != nil {
-					return nil, err
-				}
+			if err := api.processPFSMessage(msg); err != nil {
+				return nil, err
 			}
-
-			payload, err := api.service.protocol.HandleMessage(privateKey, publicKey, msg.Payload)
-
-			if err != nil {
-				api.log.Error("Failed handling message with error", "err", err)
-			}
-
-			// Notify that someone tried to contact us using an invalid bundle
-			if err == chat.ErrSessionNotFound {
-				api.log.Warn("Session not found, sending signal", "err", err)
-				keyString := fmt.Sprintf("0x%x", crypto.FromECDSAPub(publicKey))
-				handler := EnvelopeSignalHandler{}
-				handler.DecryptMessageFailed(keyString)
-			}
-
-			// Ignore errors for now
-			if err == nil {
-				msg.Payload = payload
-			}
-
 		}
 	}
 
@@ -302,8 +264,7 @@ func (api *PublicAPI) SendDirectMessage(ctx context.Context, msg chat.SendDirect
 
 	var response []hexutil.Bytes
 
-	for key, message := range *protocolMessages {
-
+	for key, message := range protocolMessages {
 		msg.PubKey = crypto.FromECDSAPub(key)
 		// Enrich with transport layer info
 		whisperMessage := chat.DirectMessageToWhisper(&msg, message)
@@ -349,7 +310,7 @@ func (api *PublicAPI) SendGroupMessage(ctx context.Context, msg chat.SendGroupMe
 
 	var response []hexutil.Bytes
 
-	for key, message := range *protocolMessages {
+	for key, message := range protocolMessages {
 		directMessage := chat.SendDirectMessageRPC{
 			PubKey:  crypto.FromECDSAPub(key),
 			Payload: msg.Payload,
@@ -368,6 +329,52 @@ func (api *PublicAPI) SendGroupMessage(ctx context.Context, msg chat.SendGroupMe
 
 	}
 	return response, nil
+}
+
+func (api *PublicAPI) processPFSMessage(msg *whisper.Message) error {
+	var privateKey *ecdsa.PrivateKey
+	var publicKey *ecdsa.PublicKey
+
+	// Msg.Dst is empty is a public message, nothing to do
+	if msg.Dst != nil {
+		// There's probably a better way to do this
+		keyBytes, err := hexutil.Bytes(msg.Dst).MarshalText()
+		if err != nil {
+			return err
+		}
+
+		privateKey, err = api.service.w.GetPrivateKey(string(keyBytes))
+		if err != nil {
+			return err
+		}
+
+		// This needs to be pushed down in the protocol message
+		publicKey, err = crypto.UnmarshalPubkey(msg.Sig)
+		if err != nil {
+			return err
+		}
+	}
+
+	payload, err := api.service.protocol.HandleMessage(privateKey, publicKey, msg.Payload)
+
+	if err != nil {
+		api.log.Error("Failed handling message with error", "err", err)
+	}
+
+	// Notify that someone tried to contact us using an invalid bundle
+	if err == chat.ErrSessionNotFound {
+		api.log.Warn("Session not found, sending signal", "err", err)
+		keyString := fmt.Sprintf("0x%x", crypto.FromECDSAPub(publicKey))
+		handler := EnvelopeSignalHandler{}
+		handler.DecryptMessageFailed(keyString)
+	}
+
+	// Ignore errors for now
+	if err == nil {
+		msg.Payload = payload
+	}
+	return nil
+
 }
 
 // -----
