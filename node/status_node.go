@@ -122,10 +122,10 @@ func (n *StatusNode) Start(config *params.NodeConfig, services ...node.ServiceCo
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
-	if n.isRunning() {
-		n.log.Debug("cannot start, node already running")
-		return ErrNodeRunning
-	}
+	//if n.isRunning() {
+		//n.log.Debug("cannot start, node already running")
+		//return ErrNodeRunning
+	//}
 
 	n.log.Debug("starting with NodeConfig", "ClusterConfig", config.ClusterConfig)
 
